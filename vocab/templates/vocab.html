@@ -80,16 +80,17 @@
 <br />
 <div class="row">
   <div class="col-xs-6 text-center">
-  <form id="entry" method="POST" action="/_check">
+  <form id="entry">
     <label for="attempt">Word:</label>
     <input id="attempt" name="attempt" type="text" width="15"
       autocomplete="off"  autofocus />
-    <input type="submit" name="try" />
   </form>
 </div></div>
 
 <br />
 
+
+<p id="response"> </p>  <!-- JavaScript will insert text here -->
 {% if session.matches|length is not equalto 0  %}
 <h2>You found </h2>
 <p id="results">
@@ -98,18 +99,80 @@
   {% endfor %}
 </p>
 {% endif %}
+<p id="tiles"> </p> <!-- Illustration of inserting graphics into page -->
+<script>
+
+$("#entry").submit( function(event) {
+   event.preventDefault();
+  });
+
+$("#attempt").keyup(function(event) {
+   var txt = $("#attempt").val();  // Current content of the input field
+   var keycode = event.which;      // They key that just went up
+   var letter = String.fromCharCode(keycode);
+
+   // That letter might not be a letter ... it could be the
+   // the backspace key, or even the shift key, because 'keyup'
+   // catches all kinds of keys.  (Also, the difference between
+   // upper and lower case comes from state of shift key + key code,
+   // so ignoring the shift key we get only the upper case letters.
+
+   if (! "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(letter)) { return }
+
+   $.getJSON( "/_check", { text: txt }, 
+              function(data) {
+                words = data.result.words;
+                message = data.result.message;
+                cond = data.result.cond;
+                console.log("rsval: " + cond)
+                if (cond == 0) {     
+                  $("#attempt").val("");
+                  window.location.replace(("/keep_going"));
+                }
+                if (cond == 1) {
+                  $("#response").html(message); 
+                }
+                if (cond == 2) {
+                  $("#response").val("");
+                }
+                if (cond == 3) {
+                  window.location.replace(("/success"));
+                }
+                showTiles(words);
+               }
+           );
+   });
+
+function showTiles(text) {
+   tiles_html = "";  // Build up the html text of links
+   for (var i=0; i < text.length; i++) {
+       letter = text.charAt(i);
+       if ("ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(letter)) {   
+          var tileURL = "/static/img/letter-" + letter + ".png";
+          var tileLink = "<img src='" + tileURL +
+          "' style='border: 0px; margin: 0px;'/>";
+          tiles_html = tiles_html + tileLink;
+       }else if ("abcdefghijklmnopqrstuvwxyz".includes(letter)){
+          letter = letter.toUpperCase(); 
+          var tileURL = "/static/img/penalty-" + letter + ".png";
+          var tileLink = "<img src='" + tileURL +
+          "' style='border: 0px; margin: 0px;'/>";
+          tiles_html = tiles_html + tileLink;
+       }else{
+          continue;
+       }
+       
+    }
+    $("#tiles").html(tiles_html);
+    // alert("Inserted html: " + tiles_html);
+}
 
 
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <!-- Mismatch, already found, etc. "flashed" from Python -->
-    {% for message in messages %}
-      <p class="message">{{ message }}</p>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
+</script>
 
 
  </div> <!-- container -->
 </body> </html>
+
+
+
